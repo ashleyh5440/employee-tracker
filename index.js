@@ -15,15 +15,6 @@ inquirer
         choices: ["View all departments", "View all roles", "View all employees", "Add a department", "Add a role", "Add an employee", "Update an employee role", "Quit"]
       },
   ])
-
-//need to have multiple if/else statements
-//if "view departments", show table with department names and ids
-//if "view all roles", show job title, role id, the department, and salary 
-//if "view all employees", show table with employee ids, first names, last names, job titles, departments, salaries, and managers that the employees report to
-//if "add a department", user enters new department name
-//if "add a role", user enters name, salary, and department for new role
-//if "add employee", user enters employee’s first name, last name, role, and manager
-//if "update", user selects which employee
   .then((answers) => {
     if(answers.prompt === "View all departments"){
         viewDepartments()
@@ -31,12 +22,12 @@ inquirer
         viewRoles()
     }else if(answers.prompt === "View all employees"){
         viewEmployees()
-    }else if(answers.promt === "Add a department"){
-
+    }else if(answers.prompt === "Add a department"){
+        addDepartment()
     }else if(answers.prompt === "Add a role"){
-        
+        addRole()
     }else if(answers.prompt === "Add an employee"){
-       
+       addEmployee()
     }else if(answers.prompt === "Update an employee role"){
     }else {db.end()} // closes app
    })
@@ -55,18 +46,70 @@ async function viewRoles(){
 }
 
 async function viewEmployees(){
-    const sql = `SELECT employees.id, employees.first_name AS "first name", employees.last_name 
-                    AS "last name", roles.job_title, department.dept_name AS department, roles.salary, 
-                    concat(manager.first_name, " ", manager.last_name) AS manager
-                    FROM employees
-                    LEFT JOIN roles
-                    ON employees.role_id = roles.id
-                    LEFT JOIN department
-                    ON roles.department_id = department.id
-                    LEFT JOIN employees manager
-                    ON manager.id = employees.manager_id`
+    const sql = `SELECT employees.id, employees.first_name AS "first name", employees.last_name AS "last name", roles.job_title, department.dept_name AS department, roles.salary, concat(manager.first_name, " ", manager.last_name) AS manager FROM employees LEFT JOIN roles ON employees.role_id = roles.id LEFT JOIN department ON roles.department_id = department.id LEFT JOIN employees manager ON manager.id = employees.manager_id`
     const employees = await db.query(sql);
     console.table(employees);
     app();
+}
+
+async function addEmployee(){
+    const roles = await db.query("SELECT id as value, job_title as name FROM roles") //makes a name value array of job title + id
+    let managers = await db.query("SELECT id as value, concat (employees.first_name, ' ', employees.last_name) as name FROM employees")
+    managers = [{
+        name: "No manager",
+        value: null
+    }, ...managers]
+    const answers = await inquirer.prompt ([
+        { type: 'input',
+        name: 'first_name',
+        message: "Please enter the employee's first name.",
+        },
+        { type: 'input',
+        name: 'last_name',
+        message: "Please enter the employee's last name.",
+        },
+        { type: 'list',
+        name: 'role_id',
+        message: "What is the employee's role?",
+        choices: roles },
+        { type: 'list',
+        name: 'manager_id',
+        message: "Who is the employee's manager?",
+        choices: managers }, 
+    ])
+    app();
+}
+//to add a department
+// async function addDepartment() {
+//     const department = await inquirer.prompt([
+//         {
+//             type: 'input',
+//             name: 'dept_name',
+//             message: "Please enter the department name:",
+//         },
+//     ])
+//     await db.query("INSERT INTO department SET ?", department.name); 
+// }
+
+function addDepartment() {
+    inquirer.prompt([
+        {
+            type: 'input',
+            name: 'dept_name',
+            message: "Please enter the department name:",
+        },
+    ])
+    .then(res => {
+        const departmentName = res.dept_name; // extracting department name from response
+        return db.query("INSERT INTO department SET ?", { dept_name: departmentName });
+    })
+    .then(() => {
+        console.log("Department added successfully!");
+        app();
+    })
+    .catch(error => {
+        console.error("Error adding department:", error);
+        app();
+    });
 }
 app();
