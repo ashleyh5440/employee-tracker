@@ -1,14 +1,18 @@
 const inquirer = require("inquirer");
-const express = require("express");
+const db = require("./db/connection");
+const util = require("util")
+
+db.query = util.promisify(db.query);
 
 //questions for user
+function app() {
 inquirer
   .prompt([
       {
         type: 'list',
         name: 'prompt',
         message: "What would you like to do?",
-        choices: ["View all departments", "View all roles", "View all employees", "Add a department", "Add a role", "Add an employee", "Update an employee role"]
+        choices: ["View all departments", "View all roles", "View all employees", "Add a department", "Add a role", "Add an employee", "Update an employee role", "Quit"]
       },
   ])
 
@@ -22,64 +26,47 @@ inquirer
 //if "update", user selects which employee
   .then((answers) => {
     if(answers.prompt === "View all departments"){
-
+        viewDepartments()
     }else if(answers.prompt === "View all roles"){
-
+        viewRoles()
     }else if(answers.prompt === "View all employees"){
-
+        viewEmployees()
     }else if(answers.promt === "Add a department"){
-        inquirer
-    .prompt([
-        {
-            type: 'input',
-            name: 'new department',
-            message: "What is the department name?",
-        },
-  ])
-    }else if(answers.prompt === "Add a role"){
-        inquirer
-        .prompt([
-            {
-                type: 'input',
-                name: 'role name',
-                message: "What is the name of this new role?",
-            },
-            {
-                type: 'input',
-                name: 'salary',
-                message: "What is the salary for this new role?",
-            },
-            {
-                type: 'input',
-                name: 'department',
-                message: "What department will this new role be under?",
-            }
-      ])
-    }else if(answers.prompt === "Add an employee"){
-        inquirer
-        .prompt([
-            {
-                type: 'input',
-                name: 'first name',
-                message: "Please enter the employee's first name.",
-            },
-            {
-                type: 'input',
-                name: 'last name',
-                message: "Please enter the employee's last name.",
-            },
-            {
-                type: 'input',
-                name: 'role',
-                message: "Please enter the employee's role.",
-            },
-            {
-                type: 'input',
-                name: 'manager',
-                message: "Please enter the employee's manager.",
-            }
-      ])
-    }else(answers.prompt === "Update an employee role"){
 
-    }
+    }else if(answers.prompt === "Add a role"){
+        
+    }else if(answers.prompt === "Add an employee"){
+       
+    }else if(answers.prompt === "Update an employee role"){
+    }else {db.end()} // closes app
    })
+}
+
+async function viewDepartments() {
+    const departments = await db.query("SELECT * FROM department")
+    console.table(departments)
+    app() 
+}
+
+async function viewRoles(){
+    const roles = await db.query("SELECT roles.job_title, roles.salary, department.dept_name FROM roles JOIN department ON roles.department_id = department.id")
+    console.table(roles);
+    app();
+}
+
+async function viewEmployees(){
+    const sql = `SELECT employees.id, employees.first_name AS "first name", employees.last_name 
+                    AS "last name", roles.job_title, department.dept_name AS department, roles.salary, 
+                    concat(manager.first_name, " ", manager.last_name) AS manager
+                    FROM employees
+                    LEFT JOIN roles
+                    ON employees.role_id = roles.id
+                    LEFT JOIN department
+                    ON roles.department_id = department.id
+                    LEFT JOIN employees manager
+                    ON manager.id = employees.manager_id`
+    const employees = await db.query(sql);
+    console.table(employees);
+    app();
+}
+app();
