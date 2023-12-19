@@ -30,6 +30,7 @@ inquirer
     }else if(answers.prompt === "Add an employee"){
        addEmployee()
     }else if(answers.prompt === "Update an employee role"){
+        updateRole()
     }else {db.end()} // closes app
    })
 }
@@ -151,37 +152,44 @@ async function addEmployee(){
 
 //function to update a role
 async function updateRole() {
-    const rows = await db.query("SELECT * FROM roles")
- 
-    const roleChoices = await rows.map(({ id, dept_name }) => ({
-     name: dept_name,
-     value: id
-   }));
-     try {
-         const response = await inquirer.prompt([
-             {
-                 type: 'list',
-                 name: 'employee',
-                 message: "Please select the employee whose role you want to update:",
-                 choices: 
-             },
-             {
-                 type: 'input',
-                 name: 'salary',
-                 message: "Please enter the new role:",
-             },
-         ]);
-         
-     const { role_name, salary, department } = response;
- 
-     await db.query("INSERT INTO roles SET ?", { job_title: role_name, salary: salary, department_id: department }); //have to use map?
- 
-     console.log("Role updated successfully!");
-     } catch (error) {
-         console.error("Error updating new role:", error);
-     } finally {
-         app();
-     }
- }
+    try {
+        // Get a list of employees to choose from
+        const employees = await db.query("SELECT id, CONCAT(first_name, ' ', last_name) AS name FROM employees");
+        console.log(employees);
 
+        // employee to update 
+        const employeeToUpdate = await inquirer.prompt([
+            {
+                type: 'list',
+                name: 'employee_id',
+                message: "Select the employee whose role you want to update:",
+                choices: employees.map(employee => ({
+                    name: employee.name,
+                    value: employee.id
+                }))
+            }
+        ]);
+        console.log(employees);
+
+        //user enters new role
+        const newRole = await inquirer.prompt([
+            {
+                type: 'input',
+                name: 'new_role',
+                message: "Enter the new role for the employee:"
+            }
+        ]);
+
+        let roleId = await db.query(`SELECT id FROM roles WHERE job_title = "${newRole.new_role}";`);
+        console.log(roleId)
+        // updates role in database
+        await db.query("UPDATE employees SET role_id = ? WHERE id = ?", [roleId.id, employeeToUpdate.employee_id]);
+
+        console.log("Employee role updated successfully!");
+    } catch (error) {
+        console.error("Error updating employee role:", error);
+    } finally {
+        app();
+    }
+}
 app();
