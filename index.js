@@ -1,6 +1,7 @@
 const inquirer = require("inquirer");
 const db = require("./db/connection");
-const util = require("util")
+const util = require("util");
+const { log } = require("console");
 
 db.query = util.promisify(db.query);
 
@@ -33,18 +34,21 @@ inquirer
    })
 }
 
+//function to view all departments
 async function viewDepartments() {
     const departments = await db.query("SELECT * FROM department")
     console.table(departments)
     app() 
 }
 
+//function to view all roles
 async function viewRoles(){
     const roles = await db.query("SELECT roles.job_title, roles.salary, department.dept_name FROM roles JOIN department ON roles.department_id = department.id")
     console.table(roles);
     app();
 }
 
+//function to view all employees
 async function viewEmployees(){
     const sql = `SELECT employees.id, employees.first_name AS "first name", employees.last_name AS "last name", roles.job_title, department.dept_name AS department, roles.salary, concat(manager.first_name, " ", manager.last_name) AS manager FROM employees LEFT JOIN roles ON employees.role_id = roles.id LEFT JOIN department ON roles.department_id = department.id LEFT JOIN employees manager ON manager.id = employees.manager_id`
     const employees = await db.query(sql);
@@ -52,6 +56,71 @@ async function viewEmployees(){
     app();
 }
 
+//function to add a department
+async function addDepartment() {
+    try {
+        const response = await inquirer.prompt([
+            {
+                type: 'input',
+                name: 'dept_name',
+                message: "Please enter the department name:",
+            },
+        ]);
+
+        const departmentName = response.dept_name;
+        
+        await db.query("INSERT INTO department SET ?", { dept_name: departmentName });
+
+        console.log("Department added successfully!");
+    } catch (error) {
+        console.error("Error adding department:", error);
+    } finally {
+        app();
+    }
+}
+
+//function to add a role
+async function addRole() {
+   const rows = await db.query("SELECT * FROM department")
+
+   const departmentChoices = await rows.map(({ id, dept_name }) => ({
+    name: dept_name,
+    value: id
+  }));
+    try {
+        const response = await inquirer.prompt([
+            {
+                type: 'input',
+                name: 'role_name',
+                message: "Please enter the role name:",
+            },
+            {
+                type: 'list',
+                name: 'salary',
+                message: "Please enter the salary for the role:",
+                choices: ["50000", "55000", "60000", "65000"]
+            },
+            {
+                type: 'list',
+                name: 'department',
+                message: "Please enter the department for the role:",
+                choices: departmentChoices
+            },
+        ]);
+        
+    const { role_name, salary, department } = response;
+
+    await db.query("INSERT INTO roles SET ?", { job_title: role_name, salary: salary, department_id: department }); //have to use map?
+
+    console.log("New role added successfully!");
+    } catch (error) {
+        console.error("Error adding new role:", error);
+    } finally {
+        app();
+    }
+}
+
+//function to add an employee
 async function addEmployee(){
     const roles = await db.query("SELECT id as value, job_title as name FROM roles") //makes a name value array of job title + id
     let managers = await db.query("SELECT id as value, concat (employees.first_name, ' ', employees.last_name) as name FROM employees")
@@ -79,37 +148,40 @@ async function addEmployee(){
     ])
     app();
 }
-//to add a department
-// async function addDepartment() {
-//     const department = await inquirer.prompt([
-//         {
-//             type: 'input',
-//             name: 'dept_name',
-//             message: "Please enter the department name:",
-//         },
-//     ])
-//     await db.query("INSERT INTO department SET ?", department.name); 
-// }
 
-function addDepartment() {
-    inquirer.prompt([
-        {
-            type: 'input',
-            name: 'dept_name',
-            message: "Please enter the department name:",
-        },
-    ])
-    .then(res => {
-        const departmentName = res.dept_name; // extracting department name from response
-        return db.query("INSERT INTO department SET ?", { dept_name: departmentName });
-    })
-    .then(() => {
-        console.log("Department added successfully!");
-        app();
-    })
-    .catch(error => {
-        console.error("Error adding department:", error);
-        app();
-    });
-}
+//function to update a role
+async function updateRole() {
+    const rows = await db.query("SELECT * FROM roles")
+ 
+    const roleChoices = await rows.map(({ id, dept_name }) => ({
+     name: dept_name,
+     value: id
+   }));
+     try {
+         const response = await inquirer.prompt([
+             {
+                 type: 'list',
+                 name: 'employee',
+                 message: "Please select the employee whose role you want to update:",
+                 choices: 
+             },
+             {
+                 type: 'input',
+                 name: 'salary',
+                 message: "Please enter the new role:",
+             },
+         ]);
+         
+     const { role_name, salary, department } = response;
+ 
+     await db.query("INSERT INTO roles SET ?", { job_title: role_name, salary: salary, department_id: department }); //have to use map?
+ 
+     console.log("Role updated successfully!");
+     } catch (error) {
+         console.error("Error updating new role:", error);
+     } finally {
+         app();
+     }
+ }
+
 app();
