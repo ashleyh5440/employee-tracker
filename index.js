@@ -170,7 +170,7 @@ async function updateRole() {
             }
         ]);
         console.log(employees);
-
+        const roles = await db.query("SELECT * FROM roles");
         //user enters new role
         const newRole = await inquirer.prompt([
             {
@@ -178,16 +178,14 @@ async function updateRole() {
                 name: 'new_role',
                 message: "Select the new role for the employee:",
                 choices: roles.map(roles => ({
-                    name: roles.name,
+                    name: roles.job_title,
                     value: roles.id
                 }))
             }
         ]);
 
-        let roleId = await db.query(`SELECT id FROM roles WHERE job_title = "${newRole.new_role}";`);
-        console.log(roleId)
         // updates role in database
-        await db.query("UPDATE employees SET role_id = ? WHERE id = ?", [roleId.id, employeeToUpdate.employee_id]);
+        await db.query("UPDATE employees SET role_id = ? WHERE id = ?", [newRole.new_role, employeeToUpdate.employee_id]);
 
         console.log("Employee role updated successfully!");
     } catch (error) {
