@@ -174,9 +174,13 @@ async function updateRole() {
         //user enters new role
         const newRole = await inquirer.prompt([
             {
-                type: 'input',
+                type: 'list',
                 name: 'new_role',
-                message: "Enter the new role for the employee:"
+                message: "Select the new role for the employee:",
+                choices: roles.map(roles => ({
+                    name: roles.name,
+                    value: roles.id
+                }))
             }
         ]);
 
